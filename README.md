@@ -1,11 +1,11 @@
 # HOSS Need for Speed Race Capture
 
-Version 1.22 is a read-only Windows scanner for Need for Speed: High Stakes, Need for Speed III: Hot Pursuit, and Hot Pursuit 2. It never writes to game memory.
+Version 1.26.2 is a read-only Windows scanner for Need for Speed: High Stakes, Need for Speed III: Hot Pursuit, Need for Speed II SE, and Hot Pursuit 2. It never writes to game memory.
 
 ## How to use it
 
 1. Keep `NFSRaceCapture.exe` and `HSRaceCapture.config.json` together in a writable folder.
-2. Start Race Capture, open **Config**, and select each installed game's executable (`nfs4.exe`, `nfs3.exe`, or the HP2 executable).
+2. Start Race Capture, open **Config**, and select each installed game's executable (`nfs4.exe`, `nfs3.exe`, `nfs2se.exe`, or the HP2 executable).
 3. Save. Use the game launch buttons on the Capture tab.
 4. Enable **Capture AI Racers** to retain the complete AI roster.
 5. Enable **Race Capture Diag** only for memory calibration; its logs can become very large.
@@ -14,26 +14,28 @@ Version 1.22 is a read-only Windows scanner for Need for Speed: High Stakes, Nee
 
 **Local Only** disables payloads, uploads, and High Stakes installation approval checks while preserving local CSV history. Executable discovery is bound to the configured path; another same-named executable is ignored.
 
-## Registering the scanner API — coming soon
+## Registering the scanner API
 
-Automated registration is not deployed yet. When available, use **Open Scanner Registration**, associate the scanner with a HOSS persona, and save the issued key in Config. The key is stored in `hs-race-api.key`, not JSON. Uploads are event-driven; failed items wait for the next race or **Send Queued Races Now**.
+Register or log in on the website, then open **Profile → Scanner API keys → Create API key**. Save the issued key in Config and link your in-game racer names under **Profile → Linked personas**. Turn off **Local Only** to enable uploads. The key is stored in `hs-race-api.key`, not JSON. Uploads are event-driven; failed items wait for the next race or **Send Queued Races Now**.
 
 Website locations are independently overrideable in `HSRaceCapture.config.json` so site moves do not require a rebuild:
 
 ```json
 {
-  "apiUrl": "https://www.hoovtech.net/HOSS/API/hoss-race-ingest.php",
-  "registrationUrl": "https://www.hoovtech.net/HOSS/API/hoss-scanner-register.php",
-  "vivValidateUrl": "https://www.hoovtech.net/HOSS/API/hoss-viv-validate.php"
+  "apiUrl": "https://races.eaoutlaws.net/api/v1/ingest.php",
+  "registrationUrl": "https://races.eaoutlaws.net/login.php",
+  "vivValidateUrl": ""
 }
 ```
 
-Restart after manual JSON edits. NFS3 and HP2 must not use the High Stakes ingest endpoint until dedicated endpoints exist.
+Restart after manual JSON edits.
 
 ## Files and game support
 
 - `HS-RaceHistory/`: High Stakes history, encrypted queue/archive, and upload receipts.
 - `NFS3HP-RaceHistory/NFS3HP-races.csv`: NFS3 player and optional AI results.
+- `NFS2SE-RaceHistory/NFS2SE-races.csv`: NFS2SE player and optional AI results.
+- `NFS6HP-RaceHistory/NFS6HP-races.csv`: completed HP2 player results.
 - `HS-RaceProbe-Logs/`, `NFS3HP-RaceProbe-Logs/`: optional calibration evidence.
 - `NFS3HP_DATABASE_MODULE.sql`: idempotent MySQL/MariaDB NFS3 schema and lookup data.
 
@@ -47,7 +49,11 @@ Captures the selected configuration and up to eight roster slots. AI capture inc
 
 ### Hot Pursuit 2
 
-The initial 2.42 scanner discovers the relocated ASAC region and reports live track, direction, laps, result signal, names, timing, and positions. Persistent history/API upload is not implemented.
+The 2.42 scanner discovers the relocated ASAC region and captures track, direction, laps, names, timing, positions, selected car, class, NFS Edition status, transmission, and validated speeds. Completed player results are saved locally and queued for upload when **Local Only** is disabled.
+
+### Need for Speed II SE
+
+Captures race settings, player timing and position, and optional AI results. The scanner locates result records dynamically and saves stable single-player finishes to local CSV history. Multiplayer result capture remains unvalidated.
 
 ## NFS3 database module
 
@@ -59,11 +65,13 @@ mysql -u USER -p DATABASE < NFS3HP_DATABASE_MODULE.sql
 
 ## Build
 
+From `capture/src` in the private source checkout:
+
 ```powershell
 $env:GOCACHE = Join-Path $env:TEMP 'hoss-go-build-cache'
 $env:GO111MODULE = 'off'
-go test main-v1.21.go hp2_windows.go nfs3_windows.go ui_windows-v1.21.go main_test.go
-go build -trimpath -ldflags='-s -w -H=windowsgui' -o NFSRaceCapture.exe main-v1.21.go hp2_windows.go nfs3_windows.go ui_windows-v1.21.go
+go test main.go hp2_windows.go nfs3_windows.go nfs2se_windows.go nfs2_history_windows.go nfs2_lapwatch_windows.go ui_windows.go main_test.go nfs2_results_test.go nfs2_opponent_menu_test.go
+go build -trimpath -ldflags='-s -w -H=windowsgui' -o NFSRaceCapture.exe main.go hp2_windows.go nfs3_windows.go nfs2se_windows.go nfs2_history_windows.go nfs2_lapwatch_windows.go ui_windows.go
 ```
 
 ## Memory mappings
@@ -135,16 +143,50 @@ Track IDs: 0 Hometown, 1 Redrock Ridge, 2 Atlantica, 3 Rocky Pass, 4 Country Woo
 
 ### Hot Pursuit 2 (2.42)
 
-After relocated ASAC discovery, `ServerValors = Valors + 0x24` and player stride is `0x3DC`.
+After relocated ASAC discovery, `ServerValors = Valors + 0x24`. The dedicated-server roster stride is 84 bytes; result records use a separate `0x3DC` stride.
 
 | Dynamic address | Type | Meaning |
 |---|---:|---|
 | `ServerValors - 0x1FEED` | UInt8 | Track ID 0–11 |
 | `ServerValors - 0x1FEE9` | UInt8 | Direction ID |
 | `ServerValors - 0x1FEE5` | UInt8 | Laps |
+| `ServerValors - 0x1FE95 + slot*84` | UInt8 | Roster car ID: 0–23 standard, 38–61 NFS Edition |
+| `ServerValors - 0x1F5DD + slot*84` | UInt8 | Transmission: 0 automatic, 1 manual |
 | `Temps - 0x8774` | UInt24 | Result signal |
 | `Temps - 0x108F8 + slot*0x3DC` | pointer | Name pointer |
 | `Temps - 0x108F0 + slot*0x3DC` | UInt32 | Name length |
 | `Temps - 0x10C20 + slot*0x3DC + lap*4` | UInt32 | Cumulative lap ticks |
+| `Temps - 0x10C2C + slot*0x3DC` | Float32 | Final top speed, metres/second |
+| `Temps - 0x10C28 + slot*0x3DC` | Float32 | Final average speed, metres/second |
 | `Temps - 0x10C50 + slot*0x3DC` | UInt32 | Best lap |
 | `Temps - 0x10A90 + slot*0x3DC + finalLap*4` | UInt32 | Zero-based position |
+
+Lap times are differences between cumulative tick values. A paired roster byte at `slot*84 + 0x04` equal to `0x10` also marks an NFS Edition car when the car ID is in the base range. Unvalidated points and laps-led offsets are not used.
+
+### Need for Speed II SE (`nfs2se.exe`)
+
+The addresses below are offsets from the loaded `nfs2se.exe` module base. UInt32 timing values use 64 ticks per second.
+
+| Module offset | Type | Meaning |
+|---|---:|---|
+| `+0xE5934`, `+0xD4E58` | UInt32 | Game type: 0 single player, 1 split screen, 2 modem, 3 serial, 4 network |
+| `+0xE5938` | UInt32 | Single-player car ID |
+| `+0xE5A50` | UInt32 | Multiplayer car ID in low 24 bits; transmission in high byte |
+| `+0x112F40` | UInt32 | Multiplayer opponent selection |
+| `+0xD4E5C` | UInt32 | Mode: 0 Single Race, 1 Tournament, 2 Knockout |
+| `+0x112DB0` | UInt32 | Track ID 0–7 |
+| `+0x112DAC` | UInt32 | Opponent skill: 16777216 Beginner, 16777472 Advanced |
+| `+0x112DB8` | UInt32 | Packed laps (low byte), backward direction (byte 2), mirror (byte 3) |
+| `+0x112DA8` | UInt32 | Mode (byte 2) and style (byte 3): 0 Simulation, 1 Wild, 2 Arcade |
+| `+0x112DC0` | UInt32 | Transmission: 1377713153 Automatic, 1377713152 Manual |
+| `+0x112DF8` | UInt32 | Traffic: 256 On, 257 Off |
+| `+0x10B3BC` | UInt32 | Player total time, ticks |
+| `+0x112024` | UInt32 | Current/last lap timing value, ticks |
+| `+0x10B3DC` | UInt32 | Diagnostic best-lap candidate; can remain stale |
+| `+0x112044` | UInt32 | Player finishing position, one-based |
+| `+0x112F4C`, `+0xE5EC8`, `+0xE5C1C` | string | Player name copies; single-player copies must agree |
+| `+0xD5C7C`, `+0x10A91C`, `+0x10B130` | UInt32 | Finish-state values; 12 at observed single-player finish |
+| `+0x10B364` | UInt32 | Finish-state value; 7 at observed single-player finish |
+| `+0x10B3B4` | UInt32 | Completed laps; must match configured laps at finish |
+
+The scanner discovers the result block by matching total, last lap, lap count, and lap sum. An observed result-total address was `0x000EB088`, but this is a dynamic allocation and must not be hardcoded. Result slots have a `0x684` stride. Relative to each result-total address, `+0x44` is the one-based position, `-0x18` holds the metadata pointer, and the racer name is at metadata pointer `+0x34`. Candidate speed data begins at result total `+0x24`; speed conversion (`raw / 65536 / 0.44704` mph) remains provisional. Complete lap arrays are accepted only when their count, sum, and final lap agree with the independent timing fields. These finish states have been validated in two single-player races; other modes need live validation.
