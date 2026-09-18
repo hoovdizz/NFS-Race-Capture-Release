@@ -1,4 +1,4 @@
-# HOSS Need for Speed Race Capture
+# Need for Speed Race Capture
 
 Version 1.26.2 is a read-only Windows scanner for Need for Speed: High Stakes, Need for Speed III: Hot Pursuit, Need for Speed II SE, and Hot Pursuit 2. It never writes to game memory.
 
