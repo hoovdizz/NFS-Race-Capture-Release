@@ -1,0 +1,79 @@
+NFS Race Capture 1.26.19 - Windows x64
+====================================
+
+Full guide: https://races.eaoutlaws.net/download.php
+Detailed game support and memory findings: README.md
+
+1. Extract this ZIP into a writable folder. Open NFSRaceCapture.exe.
+   To upgrade, close the previous scanner and replace its EXE. Keep your
+   HSRaceCapture.config.json, hs-race-api.key, history and queued races.
+   First launch creates settings if they do not exist.
+
+2. Open Config and select the executable for each installed game. Leave
+   uninstalled games blank. Save and restart after changing game paths.
+   Use the game launch buttons or start the games normally.
+
+3. For personal uploads, register or log in at https://races.eaoutlaws.net.
+   Open Profile > Scanner API keys > Create API key. Copy the issued key
+   into scanner Config and save. Link your game names under Linked personas.
+   NFS3 and NFS4 have built-in public game keys when the personal field is
+   blank; PU and the other games need a personal key. A personal key takes
+   priority. Profile Persona can select a linked upload name.
+
+4. Turn off Local Only to upload. Default API URL:
+   https://races.eaoutlaws.net/api/v1/ingest.php
+   Start the scanner before racing and keep it open through the results.
+   Check the Activity Log for attachment, saved results and server acceptance.
+
+5. Finish the race and stay on the results screen for several seconds.
+   Game-file hashing can take additional time. The log reports hash counts,
+   server validation and upload failures. Send Queued Races Now retries saved
+   encrypted uploads. Needs Review means the upload reached the website but
+   awaits validation; validated races appear in the public history.
+
+6. Optional: enable automatic replay/ghost upload. NFS2SE supports RPY,
+   NFS3 supports RP3/GST, and NFS4 supports RP4/GST. Save after the race while
+   the scanner stays open. Attachments need a matching accepted race.
+
+GAME SUPPORT
+NFS II SE: validated single-player results and optional AI results.
+NFS III Hot Pursuit: race results, optional AI, replay/ghost attachment.
+NFS High Stakes: race results, supported multiplayer, AI, replay/ghosts.
+NFS Porsche Unleashed: local finish uploads, timing, parts, setup, assists,
+  Stock/Mod labels, all observed racer names and both speed units. Placement
+  temporarily orders complete captured total times; ties, missing opponent
+  results and ambiguous identities remain blank. Native finishing rank still
+  needs additional race testing. Select assists before starting the race.
+NFS Hot Pursuit 2: beta results, local history and common encrypted uploads.
+Support depends on the tested game build and race mode. Games are not included.
+
+PU HISTORY AND HASH CHECKS
+Normal PU history has 67 readable columns, including Position and PositionMethod.
+Options use 1/0 with blanks for unknowns. Parts use a quoted JSON array.
+Debug-only memory fields stay in separate RaceProbe-Logs CSVs.
+Each new PU upload includes EXE, car model, simulation and track hashes.
+The website checks them against administrator-approved reference versions.
+Registered optional files must match when present; unregistered non-VIV files
+need reference approval before they become checks. No approval is granted by
+the scanner itself. The website PHP hash-policy update must be deployed.
+
+STORAGE AND TOOLS
+RaceHistory holds all games' CSVs, UploadQueue and EncryptedArchive.
+RaceProbe-Logs holds diagnostics; Memory-Dumps holds manual snapshots.
+Old per-game folders migrate automatically. Old PU history is backed up before
+format changes; historical placements are left unknown. One scanner uses a
+history folder at a time; a second launch focuses the existing instance.
+Click Installation Hasher to export reference CSV and JSON from this EXE.
+
+NFS4 ASI OPTION
+NFS4-ASI contains the optional silent plugin, its INI and installation guide.
+It requires an existing 32-bit ASI loader, which is not bundled. Read its
+README before installation. The desktop scanner works without installing it.
+
+TROUBLESHOOTING
+Waiting while a game is open: verify the selected EXE and access permissions.
+Access denied: close the scanner, then run it as administrator if the game is elevated.
+No upload: verify capture, Local Only off, the required API key and connectivity.
+Hash mismatch: ask the site administrator to review the intended installation.
+Enable Race Capture Diag only for investigation; logs can become very large.
+Personal configuration, API-key files, race history and logs are not included.
